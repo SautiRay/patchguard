@@ -241,8 +241,8 @@ All 11 unit tests + 1 integration test passed successfully.
 - [x] 11 tests passed
 
 ### Version 1.1 — In Progress 🔄
-- [ ] REST API (Python FastAPI)
-- [ ] PWA web interface (HTML/CSS/JS)
+- [x] REST API (Python FastAPI)
+- [x] PWA web interface (HTML/CSS/JS)
 - [ ] Grafana + Prometheus dashboards
 - [ ] Docker Compose deployment
 - [ ] JWT authentication
