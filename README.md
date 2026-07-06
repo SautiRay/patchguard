@@ -260,8 +260,8 @@ All 11 unit tests + 1 integration test passed successfully.
 
 **Sauti RAYMOND**
 - 📧 info.sautiray.it@gmail.com
-- 🎓 Bachelier en Informatique et Systèmes — EIC Namur 2025–2026
-- 💼 Open to opportunities in Linux Administration · DevOps · Cybersecurity
+- 🎓 Bachelier en Informatique et Systèmes — EICPN 2025–2026
+- 💼 Open to opportunities in Linux / Windows Administration · DevOps · Cybersecurity,IT Support /HelpDesk 
 
 ---
 
