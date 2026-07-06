@@ -1,0 +1,45 @@
+---
+# ============================================================
+# verifier_correctifs.yml
+# Playbook Ansible - Vérification des correctifs disponibles
+# Ce playbook ne modifie rien, il affiche seulement l'état
+# TFE - Bachelier en Informatique et Systèmes - 2025
+# ============================================================
+
+- name: "Vérification des correctifs disponibles"
+  hosts: serveurs_cibles
+  become: yes
+  gather_facts: yes
+
+  tasks:
+
+    - name: "Mettre à jour la liste des paquets disponibles"
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: "Compter le nombre total de correctifs disponibles"
+      shell: apt list --upgradable 2>/dev/null | grep -c "/"
+      register: total_correctifs
+      changed_when: false
+      failed_when: false
+
+    - name: "Compter les correctifs de sécurité spécifiquement"
+      shell: apt list --upgradable 2>/dev/null | grep -ic "security"
+      register: correctifs_securite
+      changed_when: false
+      failed_when: false
+
+    - name: "Vérifier si un redémarrage est nécessaire"
+      stat:
+        path: /var/run/reboot-required
+      register: reboot_requis
+
+    - name: "Afficher le résumé pour chaque machine"
+      debug:
+        msg:
+          - "Machine        : {{ inventory_hostname }}"
+          - "Système        : {{ ansible_distribution }} {{ ansible_distribution_version }}"
+          - "Total correctifs disponibles : {{ total_correctifs.stdout }}"
+          - "Correctifs de sécurité       : {{ correctifs_securite.stdout }}"
+          - "Redémarrage nécessaire       : {{ reboot_requis.stat.exists }}"

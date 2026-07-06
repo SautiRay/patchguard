@@ -1,0 +1,71 @@
+---
+# ============================================================
+# appliquer_correctifs.yml
+# Playbook Ansible - Application automatique des correctifs
+# TFE - Bachelier en Informatique et Systèmes - 2025
+# ============================================================
+
+- name: "Application des correctifs de sécurité"
+  hosts: serveurs_cibles
+  become: yes
+  gather_facts: yes
+  serial: 1
+
+  tasks:
+
+    - name: "1 - Mettre à jour la liste des paquets"
+      apt:
+        update_cache: yes
+
+    - name: "2 - Compter les correctifs avant mise à jour"
+      shell: apt-get -s upgrade | awk '/^Inst/ {c++} END {print c+0}'
+      register: avant_maj
+      changed_when: false
+      failed_when: false
+
+    - name: "3 - Afficher le nombre de correctifs avant MAJ"
+      debug:
+        msg: "{{ inventory_hostname }} : {{ avant_maj.stdout }} correctif(s) à appliquer"
+
+    - name: "4 - Appliquer tous les correctifs disponibles"
+      apt:
+        upgrade: dist
+        update_cache: no
+      register: resultat_maj
+
+    - name: "5 - Supprimer les paquets inutiles"
+      apt:
+        autoremove: yes
+        autoclean: yes
+
+    - name: "6bis - Re-Vérifier si un redémarrage est nécessaire après mise à jour"
+      stat:
+        path: /var/run/reboot-required
+      register: reboot_requis_apres
+
+    - name: "7 - Sauvegarder le résultat dans un journal"
+      shell: |
+        echo "=== MISE À JOUR $(date '+%d/%m/%Y %H:%M') ===" >> /var/log/patch-manager.log
+        echo "Correctifs avant MAJ : {{ avant_maj.stdout }}" >> /var/log/patch-manager.log
+        echo "Redémarrage nécessaire : {{ reboot_requis_apres.stat.exists }}" >> /var/log/patch-manager.log
+        echo "" >> /var/log/patch-manager.log
+      changed_when: false
+
+    - name: "8 - Redémarrer la machine si nécessaire"
+      reboot:
+        msg: "Redémarrage automatique après application des correctifs"
+        reboot_timeout: 900
+        pre_reboot_delay: 30
+        post_reboot_delay: 120
+      when: reboot_requis_apres.stat.exists
+
+    - name: "9 - Attendre que la machine soit de nouveau disponible"
+      wait_for_connection:
+        delay: 60
+        timeout: 900
+      when: reboot_requis_apres.stat.exists
+
+    - name: "10 - Confirmer que la machine est de nouveau opérationnelle"
+      debug:
+        msg: "{{ inventory_hostname }} est de nouveau en ligne après redémarrage."
+      when: reboot_requis_apres.stat.exists
