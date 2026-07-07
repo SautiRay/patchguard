@@ -30,7 +30,7 @@ Originally developed as a final-year project (TFE) at EICP Namur (2025–2026) b
 
 ---
 
-## ❌ The Problem
+##  The Problem
 
 At **ATD Quart Monde** (Brussels), a non-profit working with people in poverty:
 
@@ -42,7 +42,7 @@ At **ATD Quart Monde** (Brussels), a non-profit working with people in poverty:
 
 ---
 
-## ✅ The Solution
+##  The Solution
 
 PatchGuard automates the entire security patch lifecycle:
 
@@ -57,7 +57,7 @@ PatchGuard automates the entire security patch lifecycle:
 
 ---
 
-## 🏗️ Architecture
+##  Architecture
 
 
 ![PatchGuard Architecture](https://raw.githubusercontent.com/SautiRay/patchguard/main/docs/architecture.png) 
@@ -70,7 +70,7 @@ PatchGuard automates the entire security patch lifecycle:
 
 ---
 
-## 🧰 Tech Stack
+##  Tech Stack
 
 | Component | Technology | Version |
 |-----------|-----------|---------|
@@ -87,20 +87,20 @@ PatchGuard automates the entire security patch lifecycle:
 
 ---
 
-## ✨ Features
+##  Features
 
-- 🔍 **Automated daily security audit** via Lynis on all target servers
-- 🔧 **Automatic patch deployment** via Ansible playbooks (idempotent)
-- 📧 **E-mail notifications** — alert or OK report via Postfix/Gmail
-- 📊 **Real-time dashboard** — server status in terminal
-- 📝 **Full logging** — timestamped journal of all actions
-- 🔄 **Cron scheduling** — fully automated, no human intervention
-- 🔒 **Least privilege** — sudo limited to specific commands only
-- 📋 **Compliance** — ISO 27001, NIST CSF, CIS Controls v8, GDPR
+-  **Automated daily security audit** via Lynis on all target servers
+-  **Automatic patch deployment** via Ansible playbooks (idempotent)
+-  **E-mail notifications** — alert or OK report via Postfix/Gmail
+-  **Real-time dashboard** — server status in terminal
+-  **Full logging** — timestamped journal of all actions
+-  **Cron scheduling** — fully automated, no human intervention
+-  **Least privilege** — sudo limited to specific commands only
+-  **Compliance** — ISO 27001, NIST CSF, CIS Controls v8, GDPR
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 
@@ -222,7 +222,7 @@ patchguard/
 
 ---
 
-## 🧪 Test Results
+##  Test Results
 
 All 11 unit tests + 1 integration test passed successfully.
 
@@ -240,7 +240,7 @@ All 11 unit tests + 1 integration test passed successfully.
 
 ---
 
-## 💰 Financial Impact
+##  Financial Impact
 
 | | PatchGuard | Commercial alternatives |
 |--|--|--|
@@ -266,7 +266,7 @@ All 11 unit tests + 1 integration test passed successfully.
 ### Version 1.1 — In Progress 🔄
 - [x] REST API (Python FastAPI)
 - [x] PWA web interface (HTML/CSS/JS)
-- [ ] Grafana + Prometheus dashboards
+- [x] Grafana + Prometheus dashboards
 - [ ] Docker Compose deployment
 - [ ] JWT authentication
 
