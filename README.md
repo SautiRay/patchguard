@@ -158,7 +158,39 @@ sudo /opt/patch-manager/scripts/audit.sh
 # Manual patch deployment
 ansible-playbook -i src/ansible/inventaire.ini src/ansible/appliquer_correctifs.yml
 ```
+### Install Prometheus
 
+```bash
+# Download Prometheus
+wget https://github.com/prometheus/prometheus/releases/download/v2.51.0/prometheus-2.51.0.linux-amd64.tar.gz
+
+# Extract and install
+tar -xzf prometheus-2.51.0.linux-amd64.tar.gz
+mv prometheus-2.51.0.linux-amd64 prometheus-bin
+rm prometheus-2.51.0.linux-amd64.tar.gz
+
+# Start Prometheus
+./prometheus-bin/prometheus --config.file=prometheus/prometheus.yml
+```
+
+### Install Grafana
+
+```bash
+sudo apt-get install -y apt-transport-https software-properties-common
+wget -q -O - https://packages.grafana.com/gpg.key | sudo apt-key add -
+echo "deb https://packages.grafana.com/oss/deb stable main" | sudo tee /etc/apt/sources.list.d/grafana.list
+sudo apt-get update
+sudo apt-get install grafana -y
+sudo systemctl start grafana-server
+```
+
+### Access dashboards
+
+```
+PWA Dashboard  →  http://localhost:8000
+Grafana        →  http://localhost:3000  (admin/admin)
+Prometheus     →  http://localhost:9090
+```
 ---
 
 ## 📁 Project Structure
