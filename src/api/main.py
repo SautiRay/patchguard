@@ -7,6 +7,8 @@ import paramiko
 import os
 from datetime import datetime
 from dotenv import load_dotenv
+from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_client import Gauge, Counter
 
 load_dotenv()
 
@@ -14,6 +16,30 @@ app = FastAPI(
     title="PatchGuard API",
     description="Automated Linux Security Patch Management",
     version="1.0.0"
+)
+
+Instrumentator().instrument(app).expose(app)
+
+# Métriques Prometheus
+hardening_index = Gauge(
+    'patchguard_hardening_index',
+    'Lynis hardening index per server',
+    ['server']
+)
+patches_pending = Gauge(
+    'patchguard_patches_pending',
+    'Number of pending patches per server',
+    ['server']
+)
+server_online = Gauge(
+    'patchguard_server_online',
+    'Server online status (1=online, 0=offline)',
+    ['server']
+)
+alerts_total = Counter(
+    'patchguard_alerts_total',
+    'Total number of security alerts detected',
+    ['server']
 )
 
 # Allow PWA to call the API
@@ -192,3 +218,37 @@ async def run_audit():
         "output":    r["output"],
         "timestamp": datetime.now().isoformat()
     }
+
+# ── Update Prometheus metrics ─────────────────────────────────────────────────
+@app.get("/api/metrics/update")
+async def update_metrics():
+    for name, host in SERVERS.items():
+        # Online status
+        if host == "localhost":
+            r = local_run("echo ok")
+        else:
+            r = ssh_run(host, "echo ok")
+        online = 1 if r["success"] else 0
+        server_online.labels(server=name).set(online)
+
+        # Patches
+        cmd = "apt-get -s upgrade 2>/dev/null | grep -c '^Inst' || echo 0"
+        if host == "localhost":
+            rp = local_run(cmd)
+        else:
+            rp = ssh_run(host, cmd)
+        count = int(rp["output"]) if rp["success"] and rp["output"].isdigit() else 0
+        patches_pending.labels(server=name).set(count)
+        if count > 0:
+            alerts_total.labels(server=name).inc()
+
+        # Lynis score
+        cmd2 = "grep 'hardening_index' /var/log/lynis-report.dat 2>/dev/null | cut -d'=' -f2 || echo 0"
+        if host == "localhost":
+            rl = local_run(cmd2)
+        else:
+            rl = ssh_run(host, cmd2)
+        score = int(rl["output"]) if rl["success"] and rl["output"].isdigit() else 0
+        hardening_index.labels(server=name).set(score)
+
+    return {"status": "metrics updated", "timestamp": datetime.now().isoformat()}
