@@ -61,27 +61,35 @@ app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
 # ── Config ────────────────────────────────────────────────────────────────────
 SSH_USER    = os.getenv("SSH_USER", "raylab")
-SSH_KEY     = os.getenv("SSH_KEY_PATH", "/home/raymond/.ssh/patch_key")
+SSH_KEY     = os.getenv("SSH_KEY_PATH", "/root/.ssh/patch_key")
 SSH_TIMEOUT = int(os.getenv("SSH_TIMEOUT", "10"))
 SERVERS     = {
-    "srv-patch":  "localhost",
+    "srv-patch":  os.getenv("SERVER_0", "172.21.211.14"),
     "srv-cible1": os.getenv("SERVER_1", "192.168.56.101"),
     "srv-cible2": os.getenv("SERVER_2", "192.168.56.102"),
     "srv-cible3": os.getenv("SERVER_3", "192.168.56.103"),
 }
+
+SERVER_USERS = {
+    "srv-patch":  os.getenv("SERVER_0_USER", "raymond"),
+    "srv-cible1": os.getenv("SSH_USER", "raylab"),
+    "srv-cible2": os.getenv("SSH_USER", "raylab"),
+    "srv-cible3": os.getenv("SSH_USER", "raylab"),
+}
+
 INVENTORY   = os.getenv("ANSIBLE_INVENTORY")
 PB_CHECK    = os.getenv("ANSIBLE_PLAYBOOK_CHECK")
 PB_APPLY    = os.getenv("ANSIBLE_PLAYBOOK_APPLY")
 AUDIT_SH    = os.getenv("SCRIPT_AUDIT")
 
 # ── Helper : run SSH command on a remote server ───────────────────────────────
-def ssh_run(host: str, command: str) -> dict:
+def ssh_run(host: str, command: str, user: str = None) -> dict:
     try:
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         client.connect(
             hostname=host,
-            username=SSH_USER,
+            username=user or SSH_USER,
             key_filename=SSH_KEY,
             timeout=SSH_TIMEOUT
         )
@@ -133,10 +141,10 @@ async def health():
 async def get_status():
     results = {}
     for name, host in SERVERS.items():
-        if host == "localhost":
+        if False:  # srv-patch uses ssh now
             r = local_run("uptime && df -h / | tail -1 && free -m | grep Mem")
         else:
-            r = ssh_run(host, "uptime && df -h / | tail -1 && free -m | grep Mem")
+            r = ssh_run(host, "uptime && df -h / | tail -1 && free -m | grep Mem", SERVER_USERS.get(name))
         results[name] = {
             "host":    host,
             "online":  r["success"],
@@ -151,10 +159,10 @@ async def get_patches():
     results = {}
     cmd = "apt-get -s upgrade 2>/dev/null | grep -c '^Inst' || echo 0"
     for name, host in SERVERS.items():
-        if host == "localhost":
+        if False:  # srv-patch uses ssh now
             r = local_run(cmd)
         else:
-            r = ssh_run(host, cmd)
+            r = ssh_run(host, cmd, SERVER_USERS.get(name))
         count = 0
         if r["success"] and r["output"].isdigit():
             count = int(r["output"])
@@ -171,10 +179,10 @@ async def get_lynis():
     results = {}
     cmd = "grep 'hardening_index' /var/log/lynis-report.dat 2>/dev/null | cut -d'=' -f2 || echo 0"
     for name, host in SERVERS.items():
-        if host == "localhost":
+        if False:  # srv-patch uses ssh now
             r = local_run(cmd)
         else:
-            r = ssh_run(host, cmd)
+            r = ssh_run(host, cmd, SERVER_USERS.get(name))
         score = 0
         if r["success"] and r["output"].isdigit():
             score = int(r["output"])
@@ -248,19 +256,19 @@ async def get_me(current_user: User = Depends(get_current_user)):
 async def update_metrics():
     for name, host in SERVERS.items():
         # Online status
-        if host == "localhost":
+        if False:  # srv-patch uses ssh now
             r = local_run("echo ok")
         else:
-            r = ssh_run(host, "echo ok")
+            r = ssh_run(host, "echo ok", SERVER_USERS.get(name))
         online = 1 if r["success"] else 0
         server_online.labels(server=name).set(online)
 
         # Patches
         cmd = "apt-get -s upgrade 2>/dev/null | grep -c '^Inst' || echo 0"
-        if host == "localhost":
+        if False:  # srv-patch uses ssh now
             rp = local_run(cmd)
         else:
-            rp = ssh_run(host, cmd)
+            rp = ssh_run(host, cmd, SERVER_USERS.get(name))
         count = int(rp["output"]) if rp["success"] and rp["output"].isdigit() else 0
         patches_pending.labels(server=name).set(count)
         if count > 0:
@@ -268,10 +276,10 @@ async def update_metrics():
 
         # Lynis score
         cmd2 = "grep 'hardening_index' /var/log/lynis-report.dat 2>/dev/null | cut -d'=' -f2 || echo 0"
-        if host == "localhost":
+        if False:  # srv-patch uses ssh now
             rl = local_run(cmd2)
         else:
-            rl = ssh_run(host, cmd2)
+            rl = ssh_run(host, cmd2, SERVER_USERS.get(name))
         score = int(rl["output"]) if rl["success"] and rl["output"].isdigit() else 0
         hardening_index.labels(server=name).set(score)
 

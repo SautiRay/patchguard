@@ -1,0 +1,7 @@
+venv/
+prometheus-bin/
+__pycache__/
+*.pyc
+.git/
+.env
+*.log

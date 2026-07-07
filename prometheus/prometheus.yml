@@ -5,5 +5,5 @@ global:
 scrape_configs:
   - job_name: 'patchguard'
     static_configs:
-      - targets: ['localhost:8000']
+      - targets: ['172.21.211.14:8000']
     metrics_path: '/metrics'
