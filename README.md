@@ -60,7 +60,7 @@ PatchGuard automates the entire security patch lifecycle:
 ## 🏗️ Architecture
 
 ```
-https://github.com/SautiRay/patchguard/blob/main/docs/architecture.png
+![PatchGuard Architecture](https://raw.githubusercontent.com/SautiRay/patchguard/main/docs/architecture.png) 
 ```
 
 - **Topology** : Star — centralized management from srv-patch
