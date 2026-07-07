@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -11,6 +11,12 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Gauge, Counter
 
 load_dotenv()
+
+from fastapi.security import OAuth2PasswordRequestForm
+from src.api.auth import (
+    authenticate_user, create_token, get_current_user,
+    Token, User
+)
 
 app = FastAPI(
     title="PatchGuard API",
@@ -201,7 +207,7 @@ async def ansible_check():
 
 # ── Run Ansible apply patches ─────────────────────────────────────────────────
 @app.post("/api/ansible/apply")
-async def ansible_apply():
+async def ansible_apply(current_user: User = Depends(get_current_user)):
     r = local_run(f"ansible-playbook -i {INVENTORY} {PB_APPLY}")
     return {
         "success":   r["success"],
@@ -211,13 +217,31 @@ async def ansible_apply():
 
 # ── Run manual audit ──────────────────────────────────────────────────────────
 @app.post("/api/audit")
-async def run_audit():
+async def run_audit(current_user: User = Depends(get_current_user)):
     r = local_run(f"sudo {AUDIT_SH}")
     return {
         "success":   r["success"],
         "output":    r["output"],
         "timestamp": datetime.now().isoformat()
     }
+
+# ── Login — retourne un token JWT ────────────────────────────────────────────
+@app.post("/api/auth/login", response_model=Token)
+async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = authenticate_user(form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Nom d'utilisateur ou mot de passe incorrect"
+        )
+    token = create_token(data={"sub": user["username"]})
+    return {"access_token": token, "token_type": "bearer"}
+
+# ── Get current user info ─────────────────────────────────────────────────────
+@app.get("/api/auth/me")
+async def get_me(current_user: User = Depends(get_current_user)):
+    return {"username": current_user.username, "role": current_user.role}
+
 
 # ── Update Prometheus metrics ─────────────────────────────────────────────────
 @app.get("/api/metrics/update")

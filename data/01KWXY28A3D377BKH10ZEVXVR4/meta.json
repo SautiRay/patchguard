@@ -1,0 +1,17 @@
+{
+	"ulid": "01KWXY28A3D377BKH10ZEVXVR4",
+	"minTime": 1783405206831,
+	"maxTime": 1783411200000,
+	"stats": {
+		"numSamples": 4651,
+		"numSeries": 88,
+		"numChunks": 89
+	},
+	"compaction": {
+		"level": 1,
+		"sources": [
+			"01KWXY28A3D377BKH10ZEVXVR4"
+		]
+	},
+	"version": 1
+}
