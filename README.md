@@ -59,9 +59,9 @@ PatchGuard automates the entire security patch lifecycle:
 
 ## 🏗️ Architecture
 
-```
+
 ![PatchGuard Architecture](https://raw.githubusercontent.com/SautiRay/patchguard/main/docs/architecture.png) 
-```
+
 
 - **Topology** : Star — centralized management from srv-patch
 - **Network** : VirtualBox Host-Only (192.168.56.x)
