@@ -82,6 +82,20 @@ PB_CHECK    = os.getenv("ANSIBLE_PLAYBOOK_CHECK")
 PB_APPLY    = os.getenv("ANSIBLE_PLAYBOOK_APPLY")
 AUDIT_SH    = os.getenv("SCRIPT_AUDIT")
 
+# ── Windows servers config (v2.0) ────────────────────────────────────────────
+WIN_SERVERS = {}
+for i in range(1, 10):
+    host = os.getenv(f"WIN_SERVER_{i}")
+    if host:
+        WIN_SERVERS[f"win-srv{i}"] = host
+
+WIN_USER     = os.getenv("WIN_USER", "Administrateur")
+WIN_PASSWORD = os.getenv("WIN_PASSWORD", "")
+WIN_INVENTORY = os.getenv("WIN_ANSIBLE_INVENTORY", "")
+WIN_PB_CHECK  = os.getenv("WIN_PLAYBOOK_CHECK", "")
+WIN_PB_APPLY  = os.getenv("WIN_PLAYBOOK_APPLY", "")
+
+
 # ── Helper : run SSH command on a remote server ───────────────────────────────
 def ssh_run(host: str, command: str, user: str = None) -> dict:
     try:
@@ -249,6 +263,52 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 @app.get("/api/auth/me")
 async def get_me(current_user: User = Depends(get_current_user)):
     return {"username": current_user.username, "role": current_user.role}
+
+# ── Get status of Windows servers ────────────────────────────────────────────
+@app.get("/api/windows/status")
+async def get_windows_status():
+    if not WIN_SERVERS:
+        return {"servers": {}, "message": "No Windows servers configured", "timestamp": datetime.now().isoformat()}
+    results = {}
+    for name, host in WIN_SERVERS.items():
+        try:
+            import winrm
+            s = winrm.Session(host, auth=(WIN_USER, WIN_PASSWORD), transport='ntlm')
+            r = s.run_ps("Get-Date")
+            online = r.status_code == 0
+        except Exception as e:
+            online = False
+        results[name] = {
+            "host":    host,
+            "online":  online,
+            "type":    "windows",
+            "checked": datetime.now().isoformat()
+        }
+    return {"servers": results, "timestamp": datetime.now().isoformat()}
+
+# ── Get Windows updates count ─────────────────────────────────────────────────
+@app.get("/api/windows/patches")
+async def get_windows_patches():
+    if not WIN_SERVERS:
+        return {"patches": {}, "message": "No Windows servers configured", "timestamp": datetime.now().isoformat()}
+    r = local_run(f"ansible-playbook -i {WIN_INVENTORY} {WIN_PB_CHECK}")
+    return {
+        "success":   r["success"],
+        "output":    r["output"],
+        "timestamp": datetime.now().isoformat()
+    }
+
+# ── Apply Windows updates ─────────────────────────────────────────────────────
+@app.post("/api/windows/apply")
+async def apply_windows_patches(current_user: User = Depends(get_current_user)):
+    if not WIN_SERVERS:
+        return {"success": False, "message": "No Windows servers configured"}
+    r = local_run(f"ansible-playbook -i {WIN_INVENTORY} {WIN_PB_APPLY}")
+    return {
+        "success":   r["success"],
+        "output":    r["output"],
+        "timestamp": datetime.now().isoformat()
+    }
 
 
 # ── Update Prometheus metrics ─────────────────────────────────────────────────
