@@ -225,13 +225,25 @@
   <div id="logs-content">Chargement...</div>
 </div>
 
+<!-- Windows section (v2.0) -->
+<div id="windows-section" style="display:none">
+  <h2 style="color:#94A3B8;padding:1rem 1.5rem 0.5rem;font-size:1rem;letter-spacing:.05em;">
+    🪟 SERVEURS WINDOWS
+  </h2>
+  <div class="grid" id="windows-grid"></div>
+  <div class="actions">
+    <button class="btn btn-blue" id="btn-win-check" onclick="windowsCheck()">🔍 Vérifier Windows</button>
+    <button class="btn btn-red"  id="btn-win-apply" onclick="windowsApply()">⚡ Patcher Windows</button>
+  </div>
+</div>
+
 <!-- Output panel -->
 <div id="output-panel">
   <h3 id="output-title">📤 Résultat</h3>
   <div id="output-content"></div>
 </div>
 
-<footer>PatchGuard v1.0 — MIT License — Sauti RAYMOND — EIC Namur 2025–2026</footer>
+<footer>PatchGuard v2.0 — MIT License — Sauti RAYMOND — EIC Namur 2025–2026</footer>
 
 <script>
 const API = '';  // same origin
@@ -391,9 +403,88 @@ function showOutput(title, content) {
   document.getElementById('output-content').textContent = content;
 }
 
+// ── Build Windows card ────────────────────────────────────────────────────────
+function buildWindowsCard(name, server) {
+  const online = server?.online ?? false;
+  const host   = server?.host ?? '';
+  const checked = server?.checked
+    ? new Date(server.checked).toLocaleTimeString('fr-BE') : '';
+  return `
+    <div class="card" ${online ? '' : 'style="opacity:0.6"'}>
+      <div class="card-header">
+        <span class="card-name">🪟 ${name}</span>
+        <span class="card-host">${host}</span>
+      </div>
+      <div class="card-body">
+        <div class="stat-row">
+          <span class="stat-label">Statut</span>
+          <span class="stat-value">${online ? '🟢 EN LIGNE' : '🔴 HORS LIGNE'}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Type</span>
+          <span class="stat-value">Windows Server</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Vérifié</span>
+          <span class="stat-value">${checked}</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Windows status refresh ────────────────────────────────────────────────────
+async function refreshWindows() {
+  try {
+    const data = await get('/api/windows/status');
+    const servers = data.servers ?? {};
+    const names = Object.keys(servers);
+    if (names.length === 0) return;
+    document.getElementById('windows-section').style.display = 'block';
+    let html = '';
+    for (const name of names) html += buildWindowsCard(name, servers[name]);
+    document.getElementById('windows-grid').innerHTML = html;
+  } catch(e) { console.log('Windows error:', e); }
+}
+
+// ── Windows check ─────────────────────────────────────────────────────────────
+async function windowsCheck() {
+  const btn = document.getElementById('btn-win-check');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Vérification...';
+  showOutput('🔍 Vérification Windows en cours...', '⏳ Connexion WinRM...');
+  try {
+    const data = await get('/api/windows/patches');
+    showOutput('🔍 Résultat — Windows', data.output || data.message);
+  } catch(e) { showOutput('❌ Erreur', e.toString()); }
+  btn.disabled = false;
+  btn.innerHTML = '🔍 Vérifier Windows';
+}
+
+// ── Windows apply ─────────────────────────────────────────────────────────────
+async function windowsApply() {
+  if (!confirm('⚠️ Appliquer les correctifs sur TOUS les serveurs Windows ?')) return;
+  const btn = document.getElementById('btn-win-apply');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Application...';
+  showOutput('⚡ Correctifs Windows en cours...', '⏳ Ansible WinRM...');
+  try {
+    const token = localStorage.getItem('token');
+    const r = await fetch('/api/windows/apply', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await r.json();
+    showOutput('⚡ Résultat — Windows', data.output || data.message);
+    await refreshWindows();
+  } catch(e) { showOutput('❌ Erreur', e.toString()); }
+  btn.disabled = false;
+  btn.innerHTML = '⚡ Patcher Windows';
+}
+
 // ── Auto-refresh every 60 seconds ────────────────────────────────────────────
 refreshAll();
-setInterval(refreshAll, 60000);
+refreshWindows();
+setInterval(() => { refreshAll(); refreshWindows(); }, 60000);
 
 // ── Register Service Worker (PWA) ────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
