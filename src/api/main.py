@@ -1,10 +1,12 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import subprocess
 import paramiko
 import os
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from dotenv import load_dotenv
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -153,58 +155,68 @@ async def health():
 # ── Get status of all servers ─────────────────────────────────────────────────
 @app.get("/api/status")
 async def get_status():
-    results = {}
-    for name, host in SERVERS.items():
-        if False:  # srv-patch uses ssh now
-            r = local_run("uptime && df -h / | tail -1 && free -m | grep Mem")
-        else:
-            r = ssh_run(host, "uptime && df -h / | tail -1 && free -m | grep Mem", SERVER_USERS.get(name))
-        results[name] = {
-            "host":    host,
-            "online":  r["success"],
-            "data":    r["output"],
-            "checked": datetime.now().isoformat()
+    cmd = "uptime && df -h / | tail -1 && free -m | grep Mem"
+    loop = asyncio.get_event_loop()
+    with ThreadPoolExecutor() as pool:
+        tasks = {
+            name: loop.run_in_executor(pool, ssh_run, host, cmd, SERVER_USERS.get(name))
+            for name, host in SERVERS.items()
         }
+        results = {}
+        for name, task in tasks.items():
+            r = await task
+            results[name] = {
+                "host":    SERVERS[name],
+                "online":  r["success"],
+                "data":    r["output"],
+                "checked": datetime.now().isoformat()
+            }
     return {"servers": results, "timestamp": datetime.now().isoformat()}
 
 # ── Get patch count for each server ──────────────────────────────────────────
 @app.get("/api/patches")
 async def get_patches():
-    results = {}
     cmd = "apt-get -s upgrade 2>/dev/null | grep -c '^Inst' || echo 0"
-    for name, host in SERVERS.items():
-        if False:  # srv-patch uses ssh now
-            r = local_run(cmd)
-        else:
-            r = ssh_run(host, cmd, SERVER_USERS.get(name))
-        count = 0
-        if r["success"] and r["output"].isdigit():
-            count = int(r["output"])
-        results[name] = {
-            "host":    host,
-            "patches": count,
-            "checked": datetime.now().isoformat()
+    loop = asyncio.get_event_loop()
+    with ThreadPoolExecutor() as pool:
+        tasks = {
+            name: loop.run_in_executor(pool, ssh_run, host, cmd, SERVER_USERS.get(name))
+            for name, host in SERVERS.items()
         }
+        results = {}
+        for name, task in tasks.items():
+            r = await task
+            count = 0
+            if r["success"] and r["output"].isdigit():
+                count = int(r["output"])
+            results[name] = {
+                "host":    SERVERS[name],
+                "patches": count,
+                "checked": datetime.now().isoformat()
+            }
     return {"patches": results, "timestamp": datetime.now().isoformat()}
 
 # ── Get Lynis hardening index ─────────────────────────────────────────────────
 @app.get("/api/lynis")
 async def get_lynis():
-    results = {}
     cmd = "grep 'hardening_index' /var/log/lynis-report.dat 2>/dev/null | cut -d'=' -f2 || echo 0"
-    for name, host in SERVERS.items():
-        if False:  # srv-patch uses ssh now
-            r = local_run(cmd)
-        else:
-            r = ssh_run(host, cmd, SERVER_USERS.get(name))
-        score = 0
-        if r["success"] and r["output"].isdigit():
-            score = int(r["output"])
-        results[name] = {
-            "host":  host,
-            "score": score,
-            "max":   100
+    loop = asyncio.get_event_loop()
+    with ThreadPoolExecutor() as pool:
+        tasks = {
+            name: loop.run_in_executor(pool, ssh_run, host, cmd, SERVER_USERS.get(name))
+            for name, host in SERVERS.items()
         }
+        results = {}
+        for name, task in tasks.items():
+            r = await task
+            score = 0
+            if r["success"] and r["output"].isdigit():
+                score = int(r["output"])
+            results[name] = {
+                "host":  SERVERS[name],
+                "score": score,
+                "max":   100
+            }
     return {"lynis": results, "timestamp": datetime.now().isoformat()}
 
 # ── Get cron logs ─────────────────────────────────────────────────────────────
@@ -220,7 +232,9 @@ async def get_logs(lines: int = 50):
 # ── Run Ansible check (read-only) ─────────────────────────────────────────────
 @app.post("/api/ansible/check")
 async def ansible_check():
-    r = local_run(f"ansible-playbook -i {INVENTORY} {PB_CHECK}")
+    loop = asyncio.get_event_loop()
+    with ThreadPoolExecutor() as pool:
+        r = await loop.run_in_executor(pool, local_run, f"ansible-playbook -i {INVENTORY} {PB_CHECK}")
     return {
         "success":   r["success"],
         "output":    r["output"],
@@ -230,7 +244,9 @@ async def ansible_check():
 # ── Run Ansible apply patches ─────────────────────────────────────────────────
 @app.post("/api/ansible/apply")
 async def ansible_apply(current_user: User = Depends(get_current_user)):
-    r = local_run(f"ansible-playbook -i {INVENTORY} {PB_APPLY}")
+    loop = asyncio.get_event_loop()
+    with ThreadPoolExecutor() as pool:
+        r = await loop.run_in_executor(pool, local_run, f"ansible-playbook -i {INVENTORY} {PB_APPLY}")
     return {
         "success":   r["success"],
         "output":    r["output"],

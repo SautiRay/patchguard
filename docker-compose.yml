@@ -5,13 +5,14 @@ services:
   api:
     build: .
     container_name: patchguard-api
-    network_mode: host
     env_file:
       - .env
     volumes:
       - ~/.ssh:/root/.ssh:ro
       - /opt/patch-manager:/opt/patch-manager:ro
     restart: unless-stopped
+    networks:
+      - patchguard-net
 
   prometheus:
     image: prom/prometheus:latest
@@ -51,6 +52,7 @@ services:
     restart: unless-stopped
     networks:
       - patchguard-net
+
 
 networks:
   patchguard-net:

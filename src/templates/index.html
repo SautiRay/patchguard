@@ -193,6 +193,40 @@
       color: #334155;
       border-top: 1px solid #1E293B;
     }
+
+    /* ── Login Modal ── */
+    #login-modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    #login-modal.show { display: flex; }
+    .modal-box {
+      background: #1E293B;
+      border-radius: 12px;
+      padding: 2rem;
+      width: 340px;
+      border: 1px solid #0D9488;
+    }
+    .modal-box h2 { color: #0D9488; margin-bottom: 1.5rem; text-align: center; }
+    .modal-box input {
+      width: 100%;
+      padding: 0.7rem 1rem;
+      margin-bottom: 1rem;
+      background: #0F172A;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #E2E8F0;
+      font-size: 0.9rem;
+    }
+    .modal-box input:focus { outline: none; border-color: #0D9488; }
+    #login-error { color: #EF4444; font-size: 0.85rem; margin-bottom: 1rem; display: none; }
+    .modal-actions { display: flex; gap: 0.8rem; }
   </style>
 </head>
 <body>
@@ -357,7 +391,7 @@ async function ansibleCheck() {
   showOutput('🔍 Vérification Ansible en cours...', '⏳ Connexion aux serveurs...');
   try {
     const data = await post('/api/ansible/check');
-    showOutput('🔍 Résultat — Vérification Ansible', data.output);
+    showOutput("🔍 Résultat — Vérification Ansible", data.output);
   } catch(e) {
     showOutput('❌ Erreur', e.toString());
   }
@@ -367,20 +401,24 @@ async function ansibleCheck() {
 
 // ── Ansible apply ─────────────────────────────────────────────────────────────
 async function ansibleApply() {
+  requireAuth(async () => {
   if (!confirm('⚠️ Appliquer les correctifs sur TOUTES les machines ?\nCette action peut redémarrer certains serveurs.')) return;
   const btn = document.getElementById('btn-apply');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Application en cours...';
   showOutput('⚡ Application des correctifs en cours...', '⏳ Ansible contacte les serveurs...');
   try {
-    const data = await post('/api/ansible/apply');
-    showOutput('⚡ Résultat — Application des correctifs', data.output);
+    const token = localStorage.getItem('token');
+    const resp = await fetch('/api/ansible/apply', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+    const data = await resp.json();
+    showOutput("⚡ Résultat — Application des correctifs", data.output);
     await refreshAll();
   } catch(e) {
     showOutput('❌ Erreur', e.toString());
   }
   btn.disabled = false;
   btn.innerHTML = '⚡ Appliquer les correctifs';
+  });
 }
 
 // ── Toggle logs ───────────────────────────────────────────────────────────────
@@ -481,6 +519,52 @@ async function windowsApply() {
   btn.innerHTML = '⚡ Patcher Windows';
 }
 
+
+// ── Auth helpers ──────────────────────────────────────────────────────────────
+let pendingAction = null;
+
+function requireAuth(action) {
+  const token = localStorage.getItem('token');
+  if (token) {
+    action();
+  } else {
+    pendingAction = action;
+    document.getElementById('login-modal').classList.add('show');
+    document.getElementById('login-user').focus();
+  }
+}
+
+function closeLogin() {
+  document.getElementById('login-modal').classList.remove('show');
+  document.getElementById('login-error').style.display = 'none';
+  pendingAction = null;
+}
+
+async function submitLogin() {
+  const user = document.getElementById('login-user').value;
+  const pass = document.getElementById('login-pass').value;
+  try {
+    const form = new FormData();
+    form.append('username', user);
+    form.append('password', pass);
+    const r = await fetch('/api/auth/login', { method: 'POST', body: form });
+    if (!r.ok) throw new Error('401');
+    const data = await r.json();
+    localStorage.setItem('token', data.access_token);
+    closeLogin();
+    if (pendingAction) pendingAction();
+  } catch(e) {
+    document.getElementById('login-error').style.display = 'block';
+  }
+}
+
+// Enter key in login form
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('login-modal').classList.contains('show')) {
+    submitLogin();
+  }
+});
+
 // ── Auto-refresh every 60 seconds ────────────────────────────────────────────
 refreshAll();
 refreshWindows();
@@ -493,5 +577,23 @@ if ('serviceWorker' in navigator) {
     .catch(e => console.log('SW error:', e));
 }
 </script>
+
+<!-- Login Modal -->
+<div id="login-modal">
+  <div class="modal-box">
+    <h2>🔐 Authentification</h2>
+    <p style="color:#94A3B8;font-size:0.85rem;margin-bottom:1.2rem;text-align:center">
+      Action protégée — connectez-vous pour continuer
+    </p>
+    <input type="text"     id="login-user" placeholder="Nom d'utilisateur" />
+    <input type="password" id="login-pass" placeholder="Mot de passe" />
+    <div id="login-error">❌ Identifiants incorrects</div>
+    <div class="modal-actions">
+      <button class="btn btn-teal" style="flex:1" onclick="submitLogin()">Se connecter</button>
+      <button class="btn btn-gray" style="flex:1" onclick="closeLogin()">Annuler</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
