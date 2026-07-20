@@ -10,6 +10,7 @@ services:
     volumes:
       - ~/.ssh:/root/.ssh:ro
       - /opt/patch-manager:/opt/patch-manager:ro
+      - /var/log/patch-manager-cron.log:/var/log/patch-manager-cron.log:ro
     restart: unless-stopped
     networks:
       - patchguard-net
