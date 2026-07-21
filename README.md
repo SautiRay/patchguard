@@ -263,19 +263,18 @@ All 11 unit tests + 1 integration test passed successfully.
 - [x] Full cron scheduling
 - [x] 11 tests passed
 
-### Version 1.1 — In Progress ✅
+### Version 1.1 — completed ✅
 - [x] REST API (Python FastAPI)
 - [x] PWA web interface (HTML/CSS/JS)
 - [x] Grafana + Prometheus dashboards
 - [x] Docker Compose deployment
 - [x] JWT authentication
 
-### Version 2.0 — Planned 🔄
-- [ ] Multi-tenant support
-- [ ] Windows Server support (WinRM)
-- [ ] Cloud deployment (AWS/OVH)
-- [ ] AWX web interface
-- [ ] CVSS score filtering (debsecan)
+### Version 2.0 — completed ✅
+- [x] Multi-tenant support
+- [x] Windows Server support (WinRM)
+- [x] AWX web interface
+- [x] CVSS score filtering (debsecan)
 
 ---
 
