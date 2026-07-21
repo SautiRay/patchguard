@@ -228,6 +228,18 @@
     .modal-box input:focus { outline: none; border-color: #0D9488; }
     #login-error { color: #EF4444; font-size: 0.85rem; margin-bottom: 1rem; display: none; }
     .modal-actions { display: flex; gap: 0.8rem; }
+
+    /* ── CVSS Badges ── */
+    .cvss-section { margin: 0 1.5rem 1.5rem; }
+    .cvss-section h2 { color: #94A3B8; font-size: 1rem; letter-spacing: .05em; margin-bottom: 1rem; }
+    .cvss-card { background: #1E293B; border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem; }
+    .cvss-card h3 { color: #F1F5F9; font-size: 0.9rem; margin-bottom: 0.8rem; }
+    .cvss-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
+    .badge-critical { background: #7F1D1D; color: #FCA5A5; padding: 0.3rem 0.8rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
+    .badge-high     { background: #78350F; color: #FCD34D; padding: 0.3rem 0.8rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
+    .badge-medium   { background: #1E3A5F; color: #93C5FD; padding: 0.3rem 0.8rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
+    .badge-low      { background: #064E3B; color: #6EE7B7; padding: 0.3rem 0.8rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
+    .cve-list { font-family: Consolas, monospace; font-size: 0.75rem; color: #64748B; max-height: 100px; overflow-y: auto; }
   </style>
 </head>
 <body>
@@ -259,6 +271,16 @@
 <div id="logs-panel">
   <h3>📋 Journal d'exécution cron</h3>
   <div id="logs-content">Chargement...</div>
+</div>
+
+
+<!-- CVSS Section (v2.0) -->
+<div id="cvss-section" style="display:none" class="cvss-section">
+  <h2>🔍 ANALYSE CVSS — VULNÉRABILITÉS</h2>
+  <div id="cvss-grid"></div>
+  <div class="actions">
+    <button class="btn btn-gray" onclick="refreshCVSS()">🔄 Actualiser CVSS</button>
+  </div>
 </div>
 
 <!-- Windows section (v2.0) -->
@@ -443,6 +465,35 @@ function showOutput(title, content) {
   document.getElementById('output-content').textContent = content;
 }
 
+
+// ── CVSS Refresh ──────────────────────────────────────────────────────────────
+async function refreshCVSS() {
+  try {
+    const data = await get('/api/cvss');
+    const cvss = data.cvss ?? {};
+    const names = Object.keys(cvss);
+    if (names.length === 0) return;
+    document.getElementById('cvss-section').style.display = 'block';
+    let html = '';
+    for (const name of names) {
+      const s = cvss[name];
+      if (s.total === 0) continue;
+      html += `
+        <div class="cvss-card">
+          <h3>🖥️ ${name} — ${s.host} — ${s.total} CVE(s) détectée(s)</h3>
+          <div class="cvss-badges">
+            <span class="badge-critical">🔴 Critical: ${s.critical}</span>
+            <span class="badge-high">🟠 High: ${s.high}</span>
+            <span class="badge-medium">🔵 Medium: ${s.medium}</span>
+            <span class="badge-low">🟢 Low: ${s.low}</span>
+          </div>
+          <div class="cve-list">${s.cves.slice(0,10).join(' • ')}</div>
+        </div>`;
+    }
+    document.getElementById('cvss-grid').innerHTML = html || '<p style="color:#64748B">Aucune CVE détectée ✅</p>';
+  } catch(e) { console.log('CVSS error:', e); }
+}
+
 // ── Build Windows card ────────────────────────────────────────────────────────
 function buildWindowsCard(name, server) {
   const online = server?.online ?? false;
@@ -570,7 +621,8 @@ document.addEventListener('keydown', e => {
 // ── Auto-refresh every 60 seconds ────────────────────────────────────────────
 refreshAll();
 refreshWindows();
-setInterval(() => { refreshAll(); refreshWindows(); }, 60000);
+refreshCVSS();
+setInterval(() => { refreshAll(); refreshWindows(); refreshCVSS(); }, 60000);
 
 // ── Register Service Worker (PWA) ────────────────────────────────────────────
 if ('serviceWorker' in navigator) {

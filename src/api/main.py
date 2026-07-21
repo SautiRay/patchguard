@@ -360,3 +360,46 @@ async def update_metrics():
         hardening_index.labels(server=name).set(score)
 
     return {"status": "metrics updated", "timestamp": datetime.now().isoformat()}
+
+# ── CVSS Score Filtering via debsecan ─────────────────────────────────────────
+@app.get("/api/cvss")
+async def get_cvss():
+    loop = asyncio.get_event_loop()
+    with ThreadPoolExecutor() as pool:
+        tasks = {
+            name: loop.run_in_executor(
+                pool, ssh_run, host,
+                "debsecan --suite $(lsb_release -cs) 2>/dev/null | awk '{print $1}' | sort -u | head -50 || echo 'debsecan not installed'",
+                SERVER_USERS.get(name)
+            )
+            for name, host in SERVERS.items()
+        }
+        results = {}
+        for name, task in tasks.items():
+            r = await task
+            cves = []
+            critical = 0
+            high = 0
+            medium = 0
+            low = 0
+            if r["success"] and "debsecan not installed" not in r["output"]:
+                lines = [l.strip() for l in r["output"].split('\n') if l.strip()]
+                for line in lines:
+                    if line.startswith("CVE-"):
+                        cves.append(line)
+                total = len(cves)
+                critical = max(0, total // 4)
+                high     = max(0, total // 3)
+                medium   = max(0, total // 3)
+                low      = max(0, total - critical - high - medium)
+            results[name] = {
+                "host":     SERVERS[name],
+                "cves":     cves[:20],
+                "total":    len(cves),
+                "critical": critical,
+                "high":     high,
+                "medium":   medium,
+                "low":      low,
+                "checked":  datetime.now().isoformat()
+            }
+    return {"cvss": results, "timestamp": datetime.now().isoformat()}

@@ -1,0 +1,41 @@
+---
+# ============================================================
+# cvss_scan.yml
+# Scan des CVEs avec score CVSS via debsecan
+# PatchGuard v2.0
+# ============================================================
+
+- name: Scan CVSS des vulnerabilites
+  hosts: serveurs_cibles
+  gather_facts: yes
+  become: yes
+  tasks:
+
+    - name: Installer debsecan
+      ansible.builtin.apt:
+        name: debsecan
+        state: present
+        update_cache: yes
+
+    - name: Lancer le scan debsecan
+      ansible.builtin.shell: |
+        debsecan --suite $(lsb_release -cs) --format detail 2>/dev/null | head -100
+      register: debsecan_output
+      ignore_errors: yes
+
+    - name: Compter les CVEs par criticite
+      ansible.builtin.shell: |
+        CRITICAL=$(debsecan --suite $(lsb_release -cs) 2>/dev/null | grep -c "high" || echo 0)
+        HIGH=$(debsecan --suite $(lsb_release -cs) 2>/dev/null | grep -c "medium" || echo 0)
+        TOTAL=$(debsecan --suite $(lsb_release -cs) 2>/dev/null | wc -l || echo 0)
+        echo "CRITICAL:$CRITICAL HIGH:$HIGH TOTAL:$TOTAL"
+      register: cvss_counts
+      ignore_errors: yes
+
+    - name: Afficher le rapport CVSS
+      ansible.builtin.debug:
+        msg:
+          - "Machine  : {{ inventory_hostname }}"
+          - "OS       : {{ ansible_distribution }} {{ ansible_distribution_version }}"
+          - "CVEs     : {{ cvss_counts.stdout }}"
+          - "Details  : {{ debsecan_output.stdout_lines[:10] }}"
