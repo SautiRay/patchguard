@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  awx-db:
+    image: postgres:15
+    container_name: awx-db
+    environment:
+      POSTGRES_USER: awx
+      POSTGRES_PASSWORD: awxpassword
+      POSTGRES_DB: awx
+    volumes:
+      - awx-db-data:/var/lib/postgresql/data
+    networks:
+      - awx-net
+    restart: unless-stopped
+
+  awx-redis:
+    image: redis:7
+    container_name: awx-redis
+    networks:
+      - awx-net
+    restart: unless-stopped
+
+  awx-web:
+    image: ansible/awx:24.6.1
+    container_name: awx-web
+    depends_on:
+      - awx-db
+      - awx-redis
+    ports:
+      - "8052:8052"
+    environment:
+      AWX_ADMIN_USER: admin
+      AWX_ADMIN_PASSWORD: patchguard2026
+      DATABASE_HOST: awx-db
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: awx
+      DATABASE_USER: awx
+      DATABASE_PASSWORD: awxpassword
+      REDIS_HOST: awx-redis
+      REDIS_PORT: "6379"
+    volumes:
+      - awx-projects:/var/lib/awx/projects
+      - /opt/patch-manager:/opt/patch-manager:ro
+    networks:
+      - awx-net
+    restart: unless-stopped
+
+  awx-task:
+    image: ansible/awx:24.6.1
+    container_name: awx-task
+    depends_on:
+      - awx-db
+      - awx-redis
+    command: /usr/bin/launch_awx_task.sh
+    environment:
+      AWX_ADMIN_USER: admin
+      AWX_ADMIN_PASSWORD: patchguard2026
+      DATABASE_HOST: awx-db
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: awx
+      DATABASE_USER: awx
+      DATABASE_PASSWORD: awxpassword
+      REDIS_HOST: awx-redis
+      REDIS_PORT: "6379"
+    volumes:
+      - awx-projects:/var/lib/awx/projects
+      - /opt/patch-manager:/opt/patch-manager:ro
+    networks:
+      - awx-net
+    restart: unless-stopped
+
+networks:
+  awx-net:
+    driver: bridge
+
+volumes:
+  awx-db-data:
+  awx-projects:

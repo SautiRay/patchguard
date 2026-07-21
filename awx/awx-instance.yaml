@@ -1,0 +1,10 @@
+apiVersion: awx.ansible.com/v1beta1
+kind: AWX
+metadata:
+  name: patchguard-awx
+  namespace: awx
+spec:
+  service_type: nodeport
+  nodeport_port: 30080
+  admin_user: admin
+  admin_password_secret: awx-admin-password
