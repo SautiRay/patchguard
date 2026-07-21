@@ -126,7 +126,8 @@
     .btn-teal  { background: #0D9488; color: #fff; }
     .btn-blue  { background: #1E4D8C; color: #fff; }
     .btn-red   { background: #DC2626; color: #fff; }
-    .btn-gray  { background: #334155; color: #E2E8F0; }
+    .btn-gray   { background: #334155; color: #E2E8F0; }
+    .btn-purple { background: #7C3AED; color: #fff; }
 
     /* ── Logs panel ── */
     #logs-panel {
@@ -251,6 +252,7 @@
   <button class="btn btn-blue" id="btn-check" onclick="ansibleCheck()">🔍 Vérifier (sans modifier)</button>
   <button class="btn btn-red"  id="btn-apply" onclick="ansibleApply()">⚡ Appliquer les correctifs</button>
   <button class="btn btn-gray" onclick="toggleLogs()">📋 Voir les logs</button>
+  <button class="btn btn-purple" onclick="window.open('http://localhost:30080', '_blank')">⚙️ AWX Interface</button>
 </div>
 
 <!-- Logs panel -->
