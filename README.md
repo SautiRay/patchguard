@@ -270,12 +270,37 @@ All 11 unit tests + 1 integration test passed successfully.
 - [x] Docker Compose deployment
 - [x] JWT authentication
 
-### Version 2.0 — Planned 🔄
-- [ ] Multi-tenant support
-- [ ] Windows Server support (WinRM)
-- [ ] Cloud deployment (AWS/OVH)
-- [ ] AWX web interface
+### Version 2.0 — In Progress 🔄
+- [x] Windows Server support (WinRM + Ansible + PowerShell audit)
+- [ ] Cloud deployment (AWS/OVH) — planned
+- [x] AWX 24.6.1 on Kubernetes (k3s) + dashboard button
+- [x] JWT login modal in dashboard
+- [x] Parallel SSH — 40s to 14s
 - [ ] CVSS score filtering (debsecan)
+- [ ] install.sh v2.0
+
+---
+
+## ⚙️ AWX — Ansible Web Interface
+
+PatchGuard v2.0 integrates **AWX 24.6.1** on **Kubernetes (k3s)**.
+
+### Start AWX
+```bash
+sudo systemctl start k3s
+sudo kubectl port-forward svc/patchguard-awx-service -n awx --address 0.0.0.0 30080:80 &
+```
+Access: http://localhost:30080 — admin / patchguard2026
+
+### AWX Components
+| Component | Status |
+|---|---|
+| awx-operator | Running 2/2 |
+| patchguard-awx-web | Running 3/3 |
+| patchguard-awx-task | Running 4/4 |
+| patchguard-awx-postgres | Running 1/1 |
+
+> Note: In WSL2+VirtualBox dev environment, AWX cannot reach VMs on 192.168.56.x. In production on LAN or cloud, AWX works fully.
 
 ---
 
